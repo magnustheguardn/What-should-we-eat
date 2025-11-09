@@ -1,0 +1,491 @@
+<!doctype html> 
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>What Should We Eat?</title>
+  <style>
+    :root{
+      --bg: #fff;
+      --card: #f7f7f8;
+      --text: #111;
+      --muted: #666;
+      --accent: #0b84ff;
+      --danger: #e74c3c;
+      --radius: 12px;
+      --shadow: 0 6px 18px rgba(12,12,14,0.06);
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    @media (prefers-color-scheme: dark){
+      :root{
+        --bg: #0b0c0f;
+        --card: #111217;
+        --text: #e8eef8;
+        --muted: #9aa4b2;
+        --accent: #49a7ff;
+        --danger: #ff6b6b;
+        --shadow: 0 6px 18px rgba(0,0,0,0.6);
+      }
+    }
+
+    /* Mobile-first layout */
+    html,body{height:100%;margin:0;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+    .app{
+      min-height:100vh;
+      display:flex;
+      flex-direction:column;
+      padding-bottom:72px; /* space for bottom nav */
+    }
+    header.app-header{
+      padding:16px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      position:sticky;
+      top:0;
+      background:linear-gradient(180deg, rgba(255,255,255,0.6), transparent);
+      backdrop-filter: blur(6px);
+      z-index:5;
+    }
+    .title{
+      font-size:18px;
+      font-weight:600;
+      letter-spacing:.2px;
+    }
+    .subtitle{
+      font-size:12px;color:var(--muted);
+    }
+
+    main.container{padding:16px;padding-bottom:92px;flex:1;}
+
+    /* Card style */
+    .card{
+      background:var(--card);
+      border-radius:var(--radius);
+      padding:12px;
+      box-shadow:var(--shadow);
+      margin-bottom:12px;
+    }
+
+    /* Home list */
+    .meal{
+      display:flex;
+      gap:12px;
+      align-items:flex-start;
+      border-radius:10px;
+      padding:10px;
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);
+    }
+    .meal h3{margin:0;font-size:16px;}
+    .meal small{color:var(--muted);display:block;margin-top:6px;font-size:13px;}
+    .meal .tags{margin-top:8px;display:flex;gap:6px;flex-wrap:wrap;}
+    .tag{font-size:11px;padding:6px 8px;border-radius:999px;background:rgba(0,0,0,0.04);color:var(--muted)}
+
+    /* Forms */
+    .row{display:flex;gap:8px;align-items:center}
+    input[type="text"], input[type="url"]{
+      flex:1;padding:10px;border-radius:10px;border:1px solid rgba(0,0,0,0.06);background:transparent;color:var(--text);
+    }
+    button{
+      background:var(--accent);color:white;border:0;padding:10px 12px;border-radius:10px;font-weight:600;
+    }
+    button.ghost{background:transparent;color:var(--accent);border:1px solid rgba(0,0,0,0.06)}
+    button.danger{background:var(--danger)}
+
+    ul.list{list-style:none;padding:0;margin:8px 0 0 0;}
+    li.item{display:flex;justify-content:space-between;align-items:center;padding:10px;border-radius:8px;margin-bottom:8px;background:rgba(0,0,0,0.02);}
+
+    /* Bottom nav */
+    nav.bottom-nav{
+      position:fixed;left:12px;right:12px;bottom:12px;height:56px;border-radius:999px;
+      display:flex;align-items:center;justify-content:space-around;background:var(--card);box-shadow:var(--shadow);
+      z-index:10;padding:6px;
+    }
+    .nav-btn{flex:1;text-align:center;padding:8px;border-radius:999px;color:var(--muted);font-weight:600;font-size:13px}
+    .nav-btn.active{background:var(--accent);color:white}
+
+    /* Responsive tweaks for larger screens */
+    @media(min-width:720px){
+      main.container{max-width:720px;margin:0 auto}
+      nav.bottom-nav{left:50%;transform:translateX(-50%);width:720px}
+    }
+
+    /* small helpers */
+    .muted{color:var(--muted);font-size:13px}
+    .small{font-size:13px}
+    .pill{display:inline-block;padding:6px 10px;border-radius:999px;background:rgba(0,0,0,0.03);font-size:13px}
+    .hidden{display:none}
+  </style>
+</head>
+<body>
+  <div class="app" id="app">
+    <header class="app-header">
+      <div>
+        <div class="title">What Should We Eat?</div>
+        <div class="subtitle">Family menu from your pantry</div>
+      </div>
+      <div class="small muted" id="device-hint">Mobile</div>
+    </header>
+
+    <main class="container">
+      <!-- HOME -->
+      <section id="page-home" class="page">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+            <div>
+              <div style="font-weight:700">Available Now</div>
+              <div class="muted small">Meals that use only items currently in the pantry</div>
+            </div>
+            <div style="text-align:right">
+              <div class="muted small">Pantry items: <span id="pantry-count">0</span></div>
+              <div class="muted small">Meals: <span id="meals-count">0</span></div>
+            </div>
+          </div>
+
+          <div style="height:8px"></div>
+
+          <!-- Filter questions -->
+          <div style="display:flex;gap:8px;align-items:center;margin-top:8px;flex-wrap:wrap">
+            <div class="pill">Feeling something sweet?</div>
+            <div>
+              <label><input type="radio" name="sweet-filter" value="any" checked> Any</label>
+              <label style="margin-left:8px"><input type="radio" name="sweet-filter" value="yes"> Yes</label>
+              <label style="margin-left:8px"><input type="radio" name="sweet-filter" value="no"> No</label>
+            </div>
+          </div>
+        </div>
+
+        <div id="available-list" style="margin-top:10px"></div>
+
+        <div id="no-available" class="card hidden">
+          <div style="text-align:center;color:var(--muted)">No meals available — add ingredients or meals in the Pantry / Meals tabs.</div>
+        </div>
+      </section>
+
+      <!-- PANTRY -->
+      <section id="page-pantry" class="page hidden">
+        <div class="card">
+          <div style="font-weight:700">Pantry</div>
+          <div class="muted small">Add ingredients you have in stock.</div>
+          <div style="height:8px"></div>
+
+          <div class="row">
+            <input id="pantry-input" type="text" placeholder="e.g. eggs">
+            <button id="add-pantry-btn">Add</button>
+          </div>
+
+          <ul id="pantry-list" class="list" style="margin-top:12px"></ul>
+        </div>
+      </section>
+
+      <!-- MEALS -->
+      <section id="page-meals" class="page hidden">
+        <div class="card">
+          <div style="font-weight:700">Meals & Snacks</div>
+          <div class="muted small">Create meals and list the ingredients (comma separated). You can add tags like <code>sweet</code>, <code>quick</code>, <code>snack</code>.</div>
+          <div style="height:8px"></div>
+
+          <div style="display:flex;gap:8px;flex-direction:column">
+            <input id="meal-name" type="text" placeholder="Meal name (e.g. Grilled Cheese)">
+            <input id="meal-ingredients" type="text" placeholder="Ingredients (comma separated) e.g. bread, cheese, butter">
+            <input id="meal-tags" type="text" placeholder="Tags (comma separated) e.g. quick,snack,sweet">
+            <input id="meal-image" type="url" placeholder="Optional image URL (for later)">
+            <div style="display:flex;gap:8px">
+              <button id="add-meal-btn">Add Meal</button>
+              <button id="clear-meals" class="ghost">Clear All Meals</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="meals-list-area" style="margin-top:12px"></div>
+      </section>
+
+    </main>
+
+    <nav class="bottom-nav" role="navigation" aria-label="Main navigation">
+      <div class="nav-btn active" data-target="home">Home</div>
+      <div class="nav-btn" data-target="pantry">Pantry</div>
+      <div class="nav-btn" data-target="meals">Meals</div>
+    </nav>
+  </div>
+
+  <script>
+    /* ---------- Simple app state and storage ---------- */
+    const STORAGE_KEY = 'wswe_v1'; // what-should-we-eat
+    let state = {
+      pantry: [], // array of strings
+      meals: [], // array of { id, name, ingredients:[], tags:[], image? }
+    };
+
+    // sample starter data (only if no saved data)
+    const sampleMeals = [
+      { id: genId(), name: 'Grilled Cheese', ingredients:['bread','cheese','butter'], tags:['quick','snack'], image: '' },
+      { id: genId(), name: 'Cereal', ingredients:['cereal','milk'], tags:['quick','sweet','breakfast'], image: '' },
+      { id: genId(), name: 'Pancakes', ingredients:['flour','milk','egg'], tags:['sweet','breakfast'], image: '' },
+      { id: genId(), name: 'Salad', ingredients:['lettuce','tomato','olive oil'], tags:['healthy','lunch'], image: '' }
+    ];
+
+    function genId(){ return 'm' + Math.random().toString(36).slice(2,9); }
+
+    function load(){
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        try {
+          state = JSON.parse(raw);
+        } catch(e){
+          console.warn('Failed to parse saved state, resetting');
+          state = {pantry:[], meals:[]};
+        }
+      } else {
+        // seed samples on first run
+        state.meals = sampleMeals;
+        state.pantry = ['bread','cheese','butter','cereal','milk'];
+        save();
+      }
+    }
+    function save(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+
+    /* ---------- Rendering ---------- */
+    const pageHome = document.getElementById('page-home');
+    const pagePantry = document.getElementById('page-pantry');
+    const pageMeals = document.getElementById('page-meals');
+
+    function switchTo(page){
+      pageHome.classList.add('hidden');
+      pagePantry.classList.add('hidden');
+      pageMeals.classList.add('hidden');
+      document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+      document.querySelector(`.nav-btn[data-target="${page}"]`).classList.add('active');
+
+      if(page === 'home') pageHome.classList.remove('hidden');
+      if(page === 'pantry') pagePantry.classList.remove('hidden');
+      if(page === 'meals') pageMeals.classList.remove('hidden');
+
+      renderAll();
+    }
+
+    document.querySelectorAll('.nav-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=> switchTo(btn.dataset.target));
+    });
+
+    // Pantry
+    const pantryInput = document.getElementById('pantry-input');
+    const addPantryBtn = document.getElementById('add-pantry-btn');
+    const pantryListEl = document.getElementById('pantry-list');
+
+    addPantryBtn.addEventListener('click', addPantryFromInput);
+    pantryInput.addEventListener('keydown', (e)=>{ if(e.key === 'Enter') addPantryFromInput() });
+
+    function addPantryFromInput(){
+      const val = pantryInput.value.trim();
+      if(!val) return;
+      addPantryItem(val);
+      pantryInput.value='';
+    }
+
+    function addPantryItem(name){
+      const normalized = name.toLowerCase().trim();
+      if(!state.pantry.includes(normalized)){
+        state.pantry.push(normalized);
+        save();
+        renderPantry();
+        renderHome();
+      }
+    }
+
+    function removePantryItem(name){
+      state.pantry = state.pantry.filter(i=>i !== name);
+      save();
+      renderPantry();
+      renderHome();
+    }
+
+    function renderPantry(){
+      pantryListEl.innerHTML = '';
+      document.getElementById('pantry-count').textContent = state.pantry.length;
+      if(state.pantry.length === 0){
+        pantryListEl.innerHTML = `<div class="card muted">Your pantry is empty — add ingredients to get started.</div>`;
+        return;
+      }
+      state.pantry.forEach(item=>{
+        const li = document.createElement('li'); li.className='item';
+        li.innerHTML = `<div>${item}</div><div><button class="ghost" data-remove="${item}">Remove</button></div>`;
+        pantryListEl.appendChild(li);
+      });
+      pantryListEl.querySelectorAll('button[data-remove]').forEach(b=>{
+        b.addEventListener('click', ()=> removePantryItem(b.dataset.remove));
+      });
+    }
+
+    // Meals
+    const mealName = document.getElementById('meal-name');
+    const mealIngredients = document.getElementById('meal-ingredients');
+    const mealTags = document.getElementById('meal-tags');
+    const mealImage = document.getElementById('meal-image');
+    const addMealBtn = document.getElementById('add-meal-btn');
+    const clearMealsBtn = document.getElementById('clear-meals');
+    const mealsListArea = document.getElementById('meals-list-area');
+
+    addMealBtn.addEventListener('click', addMealFromForm);
+    clearMealsBtn.addEventListener('click', ()=> {
+      if(confirm('Clear all meals? This cannot be undone.')) {
+        state.meals = [];
+        save();
+        renderMeals();
+        renderHome();
+      }
+    });
+
+    function addMealFromForm(){
+      const name = mealName.value.trim();
+      const ing = mealIngredients.value.trim();
+      if(!name || !ing) { alert('Please provide at least a name and ingredients'); return; }
+      const tags = mealTags.value.split(',').map(t=>t.trim().toLowerCase()).filter(Boolean);
+      const ingredients = ing.split(',').map(i=>i.trim().toLowerCase()).filter(Boolean);
+      const image = mealImage.value.trim() || '';
+      state.meals.push({ id: genId(), name, ingredients, tags, image });
+      mealName.value = mealIngredients.value = mealTags.value = mealImage.value = '';
+      save();
+      renderMeals();
+      renderHome();
+    }
+
+    function removeMeal(id){
+      state.meals = state.meals.filter(m=>m.id !== id);
+      save();
+      renderMeals();
+      renderHome();
+    }
+
+    function renderMeals(){
+      mealsListArea.innerHTML = '';
+      document.getElementById('meals-count').textContent = state.meals.length;
+      if(state.meals.length === 0){
+        mealsListArea.innerHTML = `<div class="card muted">No meals yet — add one above to get started.</div>`;
+        return;
+      }
+      state.meals.forEach(meal=>{
+        const div = document.createElement('div'); div.className='card';
+        const tagsHtml = meal.tags.map(t=>`<span class="tag">${t}</span>`).join(' ');
+        const ingr = meal.ingredients.join(', ');
+        div.innerHTML = `
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+            <div>
+              <div style="font-weight:700">${meal.name}</div>
+              <small class="muted">Ingredients: ${ingr}</small>
+              <div class="tags">${tagsHtml}</div>
+            </div>
+            <div style="text-align:right">
+              <button class="danger" data-remove="${meal.id}">Delete</button>
+            </div>
+          </div>
+        `;
+        mealsListArea.appendChild(div);
+      });
+      mealsListArea.querySelectorAll('button[data-remove]').forEach(b=>{
+        b.addEventListener('click', ()=> {
+          if(confirm('Delete this meal?')) removeMeal(b.dataset.remove);
+        })
+      });
+    }
+
+    // Home / available meals
+    const availableList = document.getElementById('available-list');
+    const noAvailable = document.getElementById('no-available');
+
+    function getSweetFilter(){
+      const val = document.querySelector('input[name="sweet-filter"]:checked').value;
+      return val; // 'any'|'yes'|'no'
+    }
+    document.querySelectorAll('input[name="sweet-filter"]').forEach(r=>{
+      r.addEventListener('change', renderHome);
+    });
+
+    function mealIsAvailable(meal){
+      // all ingredients must be in pantry
+      if(!meal.ingredients || meal.ingredients.length === 0) return false;
+      return meal.ingredients.every(ing => state.pantry.includes(ing.toLowerCase()));
+    }
+
+    function mealMatchesFilters(meal){
+      const sweetFilter = getSweetFilter();
+      if(sweetFilter === 'any') return true;
+      const hasSweet = (meal.tags || []).includes('sweet');
+      if(sweetFilter === 'yes') return hasSweet;
+      if(sweetFilter === 'no') return !hasSweet;
+      return true;
+    }
+
+    function renderHome(){
+      availableList.innerHTML = '';
+      const available = state.meals.filter(m => mealIsAvailable(m) && mealMatchesFilters(m));
+      if(available.length === 0){
+        noAvailable.classList.remove('hidden');
+      } else {
+        noAvailable.classList.add('hidden');
+        available.forEach(meal=>{
+          const div = document.createElement('div'); div.className='card meal';
+          const tagsHtml = (meal.tags||[]).map(t=>`<span class="tag">${t}</span>`).join(' ');
+          const ingr = meal.ingredients.join(', ');
+          div.innerHTML = `
+            <div style="flex:1">
+              <h3>${meal.name}</h3>
+              <small class="muted">Ingredients: ${ingr}</small>
+              <div class="tags">${tagsHtml}</div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
+              <button class="ghost" data-view="${meal.id}">View</button>
+              <button data-cook="${meal.id}">Mark Cooked</button>
+            </div>
+          `;
+          availableList.appendChild(div);
+        });
+
+        // attach actions
+        availableList.querySelectorAll('button[data-view]').forEach(b=>{
+          b.addEventListener('click', (e)=>{
+            const id = b.dataset.view;
+            const meal = state.meals.find(m=>m.id===id);
+            alert(`${meal.name}\n\nIngredients: ${meal.ingredients.join(', ')}\n\nTags: ${meal.tags.join(', ')}`);
+          })
+        });
+
+        availableList.querySelectorAll('button[data-cook]').forEach(b=>{
+          b.addEventListener('click', (e)=>{
+            const id = b.dataset.cook;
+            // Example simple "mark cooked": remove ingredients from pantry (ask user)
+            if(!confirm('Mark as cooked and remove its ingredients from the pantry?')) return;
+            const meal = state.meals.find(m=>m.id===id);
+            meal.ingredients.forEach(ing=>{
+              const idx = state.pantry.indexOf(ing);
+              if(idx !== -1) state.pantry.splice(idx,1);
+            });
+            save(); renderPantry(); renderHome();
+          })
+        });
+      }
+      document.getElementById('pantry-count').textContent = state.pantry.length;
+      document.getElementById('meals-count').textContent = state.meals.length;
+    }
+
+    function renderAll(){
+      renderPantry();
+      renderMeals();
+      renderHome();
+    }
+
+    /* ---------- init ---------- */
+    load();
+    renderAll();
+
+    // small device hint
+    if(window.innerWidth <= 480) document.getElementById('device-hint').textContent = 'Mobile';
+
+    // expose some helpers to console (for tinkering)
+    window.wswe = {
+      state, save, load, renderAll
+    };
+  </script>
+</body>
+</html>
